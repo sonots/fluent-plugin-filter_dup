@@ -13,14 +13,14 @@ class DupFilterTest < Test::Unit::TestCase
     Test::FilterTestDriver.new(DupFilter).configure(conf, true)
   end
 
-  def emit(config, msgs)
-    es = Fluent::MultiEventStream.new
-    msgs.each { |msg|
-      es.add(@time, msg)
-    }
-
+  def filter(config, msgs)
     d = create_driver(config)
-    d.filter_stream('filter.test', es)
+    d.run {
+      msgs.each {|msg|
+        d.filter(msg, @time)
+      }
+    }
+    d.filtered_as_array
   end
 
   sub_test_case 'configure' do
@@ -32,8 +32,8 @@ class DupFilterTest < Test::Unit::TestCase
   sub_test_case 'filter_stream' do
     test 'dup' do
       msg = {"message" => "foo"} 
-      es = emit('', [msg])
-      assert_equal([msg, msg], es.instance_variable_get(:@record_array))
+      filtered = filter('', [msg])
+      assert_equal([msg, msg], filtered.map {|e| e.fetch(2) })
     end
   end
 end
